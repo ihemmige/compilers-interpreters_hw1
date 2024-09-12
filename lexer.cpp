@@ -118,7 +118,9 @@ Node *Lexer::read_token() {
 
   if (isalpha(c)) {
     Node *tok = read_continued_token(TOK_IDENTIFIER, lexeme, line, col, isalnum);
-    // TODO: use set_tag to change the token kind if it's actually a keyword
+    if (tok->get_str() == "var") {
+      tok->set_tag(TOK_VAR);
+    }
     return tok;
   } else if (isdigit(c)) {
     return read_continued_token(TOK_INTEGER_LITERAL, lexeme, line, col, isdigit);
@@ -138,7 +140,42 @@ Node *Lexer::read_token() {
       return token_create(TOK_RPAREN, lexeme, line, col);
     case ';':
       return token_create(TOK_SEMICOLON, lexeme, line, col);
-    // TODO: add cases for other kinds of tokens
+    case '=': {
+      if (check_next('=')) {
+        return token_create(TOK_EQUAL_EQUAL, "==", line, col);
+      }
+      return token_create(TOK_EQUAL, "=", line, col);
+    }
+    case '<': {
+      if (check_next('=')) {
+        return token_create(TOK_LESSER_EQUAL, "<=", line, col);
+      }
+      return token_create(TOK_LESSER, "<", line, col);
+    }
+    case '>': {
+      if (check_next('=')) {
+        return token_create(TOK_GREATER_EQUAL, ">=", line, col);
+      }
+      return token_create(TOK_GREATER, ">", line, col);
+    }
+    case '|': {
+      if (check_next('|')) {
+        return token_create(TOK_OR, "||", line, col);
+      }
+      SyntaxError::raise(get_current_loc(), "Unrecognized character '%c'", c);
+    }
+    case '&': {
+      if (check_next('&')) {
+        return token_create(TOK_AND, "&&", line, col);
+      }
+      SyntaxError::raise(get_current_loc(), "Unrecognized character '%c'", c);
+    }
+    case '!': {
+      if (check_next('=')) {
+        return token_create(TOK_NOT_EQUAL, "!=", line, col);
+      }
+      SyntaxError::raise(get_current_loc(), "Unrecognized character '%c'", c);
+    }
     default:
       SyntaxError::raise(get_current_loc(), "Unrecognized character '%c'", c);
     }
@@ -173,3 +210,11 @@ Node *Lexer::read_continued_token(enum TokenKind kind, const std::string &lexeme
 }
 
 // TODO: implement additional member functions if necessary
+bool Lexer::check_next(int target) {
+  int ahead = read();
+  if (ahead == target) {
+    return true;
+  }
+  unread(ahead);
+  return false;
+}

@@ -14,7 +14,16 @@ enum TokenKind {
   TOK_LPAREN,
   TOK_RPAREN,
   TOK_SEMICOLON,
-  // TODO: add members for additional kinds of tokens
+  TOK_VAR,
+  TOK_EQUAL,
+  TOK_OR,
+  TOK_AND,
+  TOK_LESSER,
+  TOK_LESSER_EQUAL,
+  TOK_GREATER,
+  TOK_GREATER_EQUAL,
+  TOK_EQUAL_EQUAL,
+  TOK_NOT_EQUAL
 };
 
 #endif // TOKEN_H
