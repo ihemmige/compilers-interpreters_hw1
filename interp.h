@@ -3,6 +3,7 @@
 
 #include "value.h"
 #include "environment.h"
+#include <unordered_set>
 class Node;
 class Location;
 
@@ -18,7 +19,8 @@ public:
   Value execute();
 
 private:
-  // TODO: private member functions
+  void check_vars(std::unordered_set<std::string>& var_set, Node* parent);
+  Value execute_node(Environment& env, Node* node);
 };
 
 #endif // INTERP_H

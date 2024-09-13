@@ -8,4 +8,17 @@ Environment::Environment(Environment *parent)
 Environment::~Environment() {
 }
 
-// TODO: implement member functions
+
+Value Environment::get_var(std::string var) {
+  return Value(m_lookup_table[var]);
+}
+
+Value Environment::set_var(std::string var, int value) {
+  m_lookup_table[var] = value;
+  return Value(value);
+}
+
+Value Environment::create_var(std::string var) {
+  m_lookup_table[var] = 0;
+  return Value(0);
+}
