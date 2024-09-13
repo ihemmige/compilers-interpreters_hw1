@@ -13,7 +13,16 @@ enum ASTKind {
   AST_INT_LITERAL,
   AST_UNIT,
   AST_STATEMENT,
-  // TODO: add members for other AST node kinds
+  AST_VARDEF,
+  AST_EQUAL, 
+  AST_OR,
+  AST_AND,
+  AST_LESSER,
+  AST_LESSER_EQUAL,
+  AST_GREATER,
+  AST_GREATER_EQUAL,
+  AST_EQUAL_EQUAL,
+  AST_NOT_EQUAL
 };
 
 class ASTTreePrint : public TreePrint {

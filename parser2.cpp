@@ -7,6 +7,8 @@
 #include "exceptions.h"
 #include "parser2.h"
 
+#include <iostream>
+
 ////////////////////////////////////////////////////////////////////////
 // Parser2 implementation
 // This version of the parser builds an AST directly,
@@ -57,19 +59,113 @@ Node *Parser2::parse_Unit() {
 }
 
 Node *Parser2::parse_Stmt() {
-  // Stmt -> ^ E ;
+  // Stmt -> ^ var ident ;
+  // Stmt -> ^ A ;
 
   std::unique_ptr<Node> s(new Node(AST_STATEMENT));
 
-  Node *next_tok = m_lexer->peek();
-  if (next_tok == nullptr) {
+  Node *next = m_lexer->peek();
+  Node *next_next = m_lexer->peek(2);
+  if (!next || !next_next) {
+    SyntaxError::raise(m_lexer->get_current_loc(), "Unexpected end of input looking for statement");
+  }
+  if (next->get_tag() == TOK_VAR) { // var ident
+    Node* var(expect(TOK_VAR));
+    var->set_tag(AST_VARDEF);
+    var->set_str("");
+    Node* ident(expect(TOK_IDENTIFIER));
+    ident->set_tag(AST_VARREF);
+
+    var->append_kid(ident);
+    s->append_kid(var);
+  } else {
+    s->append_kid(parse_A());
+  }
+  
+  expect_and_discard(TOK_SEMICOLON);
+  return s.release();
+}
+
+Node *Parser2::parse_A() {
+  Node *next = m_lexer->peek();
+  Node *next_next = m_lexer->peek(2);
+
+  if (!next || !next_next) {
     SyntaxError::raise(m_lexer->get_current_loc(), "Unexpected end of input looking for statement");
   }
 
-  s->append_kid(parse_E());
-  expect_and_discard(TOK_SEMICOLON);
+  if (next->get_tag() == TOK_IDENTIFIER && next_next->get_tag() == TOK_EQUAL) {
+    Node* ident(expect(TOK_IDENTIFIER));
+    ident->set_tag(AST_VARREF);
+    
+    Node* equal(expect(TOK_EQUAL));
+    equal->set_tag(AST_EQUAL);
+    equal->append_kid(ident);
+    equal->append_kid(parse_A());
+    equal->set_str("");
+    return equal;
+  }
+  return parse_L();
+}
 
-  return s.release();
+Node *Parser2::parse_L() {
+  std::unique_ptr<Node> left(parse_R());
+
+  Node *next = m_lexer->peek();
+  if (next) {
+    if (next->get_tag() == TOK_OR || next->get_tag() == TOK_AND) {
+      std::unique_ptr<Node> oper(expect(static_cast<enum TokenKind>(next->get_tag())));
+      std::unique_ptr<Node> right(parse_R());
+      oper->append_kid(left.release());
+      oper->append_kid(right.release());
+      oper->set_str("");
+      oper->set_tag(next->get_tag() == TOK_OR ? AST_OR : AST_AND);
+      return oper.release();
+    }
+    // } else {
+    //     std::cout << next->get_str() << std::endl;
+    //     SyntaxError::raise(m_lexer->get_current_loc(), "Unexpected token found");
+    // }
+  }
+  return left.release();
+}
+
+Node *Parser2::parse_R() {
+  std::unique_ptr<Node> left(parse_E());
+  Node *next = m_lexer->peek();
+  if (!next) {
+    return left.release();
+  }
+  // if the next node is relational operator
+  int next_tag = next->get_tag();
+  if (next_tag == TOK_LESSER || next_tag == TOK_LESSER_EQUAL || 
+              next_tag == TOK_GREATER || next_tag == TOK_GREATER_EQUAL ||
+              next_tag == TOK_EQUAL_EQUAL || next_tag == TOK_NOT_EQUAL) {
+                    std::unique_ptr<Node> oper(expect(static_cast<enum TokenKind>(next_tag)));
+                    
+                    switch (next_tag) {
+                      case TOK_LESSER: 
+                        oper->set_tag(AST_LESSER); break;
+                      case TOK_LESSER_EQUAL:
+                        oper->set_tag(AST_LESSER_EQUAL); break;
+                      case TOK_GREATER:
+                        oper->set_tag(AST_GREATER); break;
+                      case TOK_GREATER_EQUAL:
+                        oper->set_tag(AST_GREATER_EQUAL); break;
+                      case TOK_EQUAL_EQUAL:
+                        oper->set_tag(AST_EQUAL_EQUAL); break;
+                      case TOK_NOT_EQUAL:
+                        oper->set_tag(AST_NOT_EQUAL); break;
+                      default: error_at_current_loc("Unrecognized relational operator");
+                    } 
+
+                    oper->append_kid(left.release());
+                    oper->append_kid(parse_E());
+                    oper->set_str("");
+                    return oper.release();
+  }
+  return left.release();
+
 }
 
 Node *Parser2::parse_E() {
@@ -183,7 +279,7 @@ Node *Parser2::parse_F() {
   } else if (tag == TOK_LPAREN) {
     // F -> ^ ( E )
     expect_and_discard(TOK_LPAREN);
-    std::unique_ptr<Node> ast(parse_E());
+    std::unique_ptr<Node> ast(parse_A());
     expect_and_discard(TOK_RPAREN);
     return ast.release();
   } else {

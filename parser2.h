@@ -24,6 +24,9 @@ private:
   Node *parse_T();
   Node *parse_TPrime(Node *ast);
   Node *parse_F();
+  Node *parse_A();
+  Node *parse_L();
+  Node *parse_R();
 
   // Consume a specific token, wrapping it in a Node
   Node *expect(enum TokenKind tok_kind);
