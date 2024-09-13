@@ -44,11 +44,10 @@ void Interpreter::analyze() {
 
 Value Interpreter::execute() {
   Value result;
-  Environment* env = new Environment();
+  std::unique_ptr<Environment> env(new Environment());
   for (auto it = m_ast->cbegin(); it != m_ast->cend(); ++it) {
     result = execute_node(*env, *it);
   }
-  delete env;
   return result;
 }
 
