@@ -7,8 +7,6 @@
 #include "exceptions.h"
 #include "parser2.h"
 
-#include <iostream>
-
 ////////////////////////////////////////////////////////////////////////
 // Parser2 implementation
 // This version of the parser builds an AST directly,
