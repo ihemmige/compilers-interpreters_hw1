@@ -54,7 +54,6 @@ Node *Parser2::parse_Unit() {
     if (m_lexer->peek() == nullptr)
       break;
   }
-
   return unit.release();
 }
 
