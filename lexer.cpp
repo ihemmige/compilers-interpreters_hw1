@@ -140,6 +140,7 @@ Node *Lexer::read_token() {
       return token_create(TOK_RPAREN, lexeme, line, col);
     case ';':
       return token_create(TOK_SEMICOLON, lexeme, line, col);
+    // for multi-char tokens, check one character ahead to determine token
     case '=': {
       if (check_next('=')) {
         return token_create(TOK_EQUAL_EQUAL, "==", line, col);
@@ -209,7 +210,7 @@ Node *Lexer::read_continued_token(enum TokenKind kind, const std::string &lexeme
   }
 }
 
-// TODO: implement additional member functions if necessary
+// determine whether next character matches 'target' character
 bool Lexer::check_next(int target) {
   int ahead = read();
   if (ahead == target) {

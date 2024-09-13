@@ -8,7 +8,6 @@ Environment::Environment(Environment *parent)
 Environment::~Environment() {
 }
 
-
 Value Environment::get_var(std::string var) {
   return Value(m_lookup_table[var]);
 }

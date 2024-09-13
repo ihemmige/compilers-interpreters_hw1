@@ -19,7 +19,7 @@
 //
 // Unit -> Stmt
 // Unit -> Stmt Unit
-// Stmt -> E ;
+// Stmt -> A ;
 // E -> T E'
 // E' -> + T E'
 // E' -> - T E'
@@ -30,7 +30,20 @@
 // T' -> epsilon
 // F -> number
 // F -> ident
-// F -> ( E )
+// F -> ( A )
+// Stmt → var ident ;
+// A    → ident = A
+// A    → L
+// L    → R || R
+// L    → R && R
+// L    → R
+// R    → E < E
+// R    → E <= E
+// R    → E > E
+// R    → E >= E
+// R    → E == E
+// R    → E != E
+// R    → E
 
 Parser2::Parser2(Lexer *lexer_to_adopt)
   : m_lexer(lexer_to_adopt)
@@ -69,15 +82,15 @@ Node *Parser2::parse_Stmt() {
     SyntaxError::raise(m_lexer->get_current_loc(), "Unexpected end of input looking for statement");
   }
   if (next->get_tag() == TOK_VAR) { // var ident
-    Node* var(expect(TOK_VAR));
+    Node* var(expect(TOK_VAR)); // consume var
     var->set_tag(AST_VARDEF);
-    var->set_str("");
+    var->set_str(""); // for AST visualization
     Node* ident(expect(TOK_IDENTIFIER));
     ident->set_tag(AST_VARREF);
-
+    // s -> var -> ident
     var->append_kid(ident);
     s->append_kid(var);
-  } else {
+  } else { // A
     s->append_kid(parse_A());
   }
   
@@ -86,6 +99,9 @@ Node *Parser2::parse_Stmt() {
 }
 
 Node *Parser2::parse_A() {
+  // A    → ^ ident = A
+  // A    → ^ L
+
   Node *next = m_lexer->peek();
   Node *next_next = m_lexer->peek(2);
 
@@ -93,78 +109,92 @@ Node *Parser2::parse_A() {
     SyntaxError::raise(m_lexer->get_current_loc(), "Unexpected end of input looking for statement");
   }
 
+  // ident = A
   if (next->get_tag() == TOK_IDENTIFIER && next_next->get_tag() == TOK_EQUAL) {
-    Node* ident(expect(TOK_IDENTIFIER));
+    Node* ident(expect(TOK_IDENTIFIER)); // consume identifier
     ident->set_tag(AST_VARREF);
     
-    Node* equal(expect(TOK_EQUAL));
+    Node* equal(expect(TOK_EQUAL)); // consume =
     equal->set_tag(AST_EQUAL);
+
+    // ident <- equal -> A
     equal->append_kid(ident);
     equal->append_kid(parse_A());
-    equal->set_str("");
+    equal->set_str(""); // for AST visualization
     return equal;
   }
-  return parse_L();
+  return parse_L(); // L
 }
 
 Node *Parser2::parse_L() {
-  std::unique_ptr<Node> left(parse_R());
+  // L    → ^ R || R
+  // L    → ^ R && R
+  // L    → ^ R
+
+  std::unique_ptr<Node> left(parse_R()); // left side of logical operator
 
   Node *next = m_lexer->peek();
+  // if the next token is || or &&
   if (next) {
     if (next->get_tag() == TOK_OR || next->get_tag() == TOK_AND) {
-      std::unique_ptr<Node> oper(expect(static_cast<enum TokenKind>(next->get_tag())));
-      std::unique_ptr<Node> right(parse_R());
+      std::unique_ptr<Node> oper(expect(static_cast<enum TokenKind>(next->get_tag()))); // consume || or &&
+      std::unique_ptr<Node> right(parse_R()); // parse right side of logical operator
+      
+      // left <- oper -> right
       oper->append_kid(left.release());
       oper->append_kid(right.release());
-      oper->set_str("");
+      oper->set_str(""); // for AST visualization
       oper->set_tag(next->get_tag() == TOK_OR ? AST_OR : AST_AND);
       return oper.release();
     }
-    // } else {
-    //     std::cout << next->get_str() << std::endl;
-    //     SyntaxError::raise(m_lexer->get_current_loc(), "Unexpected token found");
-    // }
   }
   return left.release();
 }
 
 Node *Parser2::parse_R() {
-  std::unique_ptr<Node> left(parse_E());
+  // R    → E < E
+  // R    → E <= E
+  // R    → E > E
+  // R    → E >= E
+  // R    → E == E
+  // R    → E != E
+  // R    → E
+
+  std::unique_ptr<Node> left(parse_E()); // left side of relational operator
   Node *next = m_lexer->peek();
   if (!next) {
     return left.release();
   }
-  // if the next node is relational operator
+  // if the next token is relational operator
   int next_tag = next->get_tag();
   if (next_tag == TOK_LESSER || next_tag == TOK_LESSER_EQUAL || 
-              next_tag == TOK_GREATER || next_tag == TOK_GREATER_EQUAL ||
-              next_tag == TOK_EQUAL_EQUAL || next_tag == TOK_NOT_EQUAL) {
-                    std::unique_ptr<Node> oper(expect(static_cast<enum TokenKind>(next_tag)));
-                    
-                    switch (next_tag) {
-                      case TOK_LESSER: 
-                        oper->set_tag(AST_LESSER); break;
-                      case TOK_LESSER_EQUAL:
-                        oper->set_tag(AST_LESSER_EQUAL); break;
-                      case TOK_GREATER:
-                        oper->set_tag(AST_GREATER); break;
-                      case TOK_GREATER_EQUAL:
-                        oper->set_tag(AST_GREATER_EQUAL); break;
-                      case TOK_EQUAL_EQUAL:
-                        oper->set_tag(AST_EQUAL_EQUAL); break;
-                      case TOK_NOT_EQUAL:
-                        oper->set_tag(AST_NOT_EQUAL); break;
-                      default: error_at_current_loc("Unrecognized relational operator");
-                    } 
+      next_tag == TOK_GREATER || next_tag == TOK_GREATER_EQUAL ||
+      next_tag == TOK_EQUAL_EQUAL || next_tag == TOK_NOT_EQUAL) {
+        std::unique_ptr<Node> oper(expect(static_cast<enum TokenKind>(next_tag))); // consume the relational operator
+        // left <- oper -> parse_E()
+        oper->append_kid(left.release());
+        oper->append_kid(parse_E());
+        oper->set_str("");
 
-                    oper->append_kid(left.release());
-                    oper->append_kid(parse_E());
-                    oper->set_str("");
-                    return oper.release();
+        // based on the relational operator, set the corresponding AST tag
+        switch (next_tag) {
+          case TOK_LESSER: 
+            oper->set_tag(AST_LESSER); break;
+          case TOK_LESSER_EQUAL:
+            oper->set_tag(AST_LESSER_EQUAL); break;
+          case TOK_GREATER:
+            oper->set_tag(AST_GREATER); break;
+          case TOK_GREATER_EQUAL:
+            oper->set_tag(AST_GREATER_EQUAL); break;
+          case TOK_EQUAL_EQUAL:
+            oper->set_tag(AST_EQUAL_EQUAL); break;
+          case TOK_NOT_EQUAL:
+            oper->set_tag(AST_NOT_EQUAL); break;
+          default: error_at_current_loc("Unrecognized relational operator");
+        } 
+        return oper.release();
   }
   return left.release();
-
 }
 
 Node *Parser2::parse_E() {
@@ -276,7 +306,7 @@ Node *Parser2::parse_F() {
     ast->set_loc(tok->get_loc());
     return ast.release();
   } else if (tag == TOK_LPAREN) {
-    // F -> ^ ( E )
+    // F -> ^ ( A )
     expect_and_discard(TOK_LPAREN);
     std::unique_ptr<Node> ast(parse_A());
     expect_and_discard(TOK_RPAREN);

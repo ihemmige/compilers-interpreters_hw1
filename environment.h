@@ -10,8 +10,7 @@
 class Environment {
 private:
   Environment *m_parent;
-  // TODO: representation of environment (map of names to values)
-  std::unordered_map<std::string, int> m_lookup_table;
+  std::unordered_map<std::string, int> m_lookup_table; // map names to ints
 
   // copy constructor and assignment operator prohibited
   Environment(const Environment &);
@@ -21,6 +20,7 @@ public:
   Environment(Environment *parent = nullptr);
   ~Environment();
 
+  // functions to access, modify, and create variables
   Value get_var(std::string var);
   Value set_var(std::string var, int value);
   Value create_var(std::string var);
